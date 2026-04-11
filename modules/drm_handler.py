@@ -282,18 +282,27 @@ async def drm_handler(bot: Client, m: Message):
                         namef = f'{name1[:60]} {endfilename}'
                         
 #........................................................................................................................................................................................
-            # --- PDF CHECK SABSE UPAR ---
-             # --- 1. PDF CHECK (SABSE PEHLE) ---
-            if url.lower().endswith(".pdf") or "/pdf/" in url.lower():
+            # ... (Links loop ke andar) ...
+            url = "https://" + Vxy
+            
+            # --- PDF DOWNLOAD LOGIC (FIXED) ---
+            if ".pdf" in url.lower() or "pdf" in url.lower():
                 try:
-                    # 'cc1' caption setup
+                    # PDF ke liye caption setup
                     cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
-                    ka = await helper.download(url, name) # Using helper's download for PDF
+                    
+                    # helper.download (saini.py) ko call kar rahe hain
+                    ka = await helper.download(url, name)
+                    
+                    # PDF bhejne ke liye send_doc function
                     await helper.send_doc(bot, m, None, ka, cc1, None, count, name, channel_id)
+                    
+                    count += 1
+                    continue # PDF bhej di, ab niche wala video logic skip ho jayega
+                except Exception as e:
+                    await bot.send_message(channel_id, f"⚠️ PDF Failed: {name}\nReason: {str(e)}")
                     count += 1
                     continue
-                except Exception as e:
-                    print(f"PDF Error: {e}")
                 
             # ... [Previous setup code] ...
             if "visionias" in url:
