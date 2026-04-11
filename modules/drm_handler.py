@@ -284,46 +284,33 @@ async def drm_handler(bot: Client, m: Message):
 #........................................................................................................................................................................................
                         
             
-                                    # --- PDF CHECK (CHROME HEADERS MIMIC) ---
+                                                # --- PDF CHECK (THE MASTER YT-DLP BYPASS) ---
             if ".pdf" in url.lower() or "/pdf/" in url.lower():
                 try:
                     pdf_path = f"{name1[:50]}.pdf"
                     
-                    # Ye headers Chrome ki identity chura lenge
-                    chrome_headers = {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Accept-Encoding': 'gzip, deflate, br',
-                        'Connection': 'keep-alive',
-                        'Upgrade-Insecure-Requests': '1',
-                        'Referer': 'https://utkarsh.com/', # Utkarsh ka referer zaroori ho sakta hai
-                    }
+                    # yt-dlp ko bolenge ki ye file download kare bina kisi extractor ke
+                    # Isme headers aur bypass built-in hote hain
+                    cmd = f'yt-dlp -o "{pdf_path}" --no-check-certificate --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36" "{url}"'
                     
-                    # Session use karenge taaki cookies handle ho sakein
-                    async with aiohttp.ClientSession(headers=chrome_headers) as session:
-                        async with session.get(url, timeout=40) as resp:
-                            if resp.status == 200:
-                                content = await resp.read()
-                                if len(content) > 2048: # 2KB se bada content
-                                    async with aiofiles.open(pdf_path, mode='wb') as f:
-                                        await f.write(content)
-                                    
-                                    cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
-                                    await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
-                                    if os.path.exists(pdf_path):
-                                        os.remove(pdf_path)
-                                    count += 1
-                                    continue
-                                else:
-                                    raise Exception(f"Server sent small file ({len(content)} bytes). Bot is still being detected.")
-                            else:
-                                raise Exception(f"Server returned status code: {resp.status}")
-                                
+                    # Run the command
+                    process = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                    
+                    if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 2048:
+                        cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
+                        await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
+                        os.remove(pdf_path)
+                        count += 1
+                        continue
+                    else:
+                        # Agar yt-dlp fail ho jaye toh requests ka last try with Utkarsh S3 fix
+                        raise Exception("yt-dlp failed or file size too small")
+                        
                 except Exception as e:
-                    await bot.send_message(channel_id, f'⚠️ **PDF Chrome-Bypass Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
+                    await bot.send_message(channel_id, f'⚠️ **PDF Bypass Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
                     count += 1
                     continue
+
 
 
        
