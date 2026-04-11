@@ -284,36 +284,47 @@ async def drm_handler(bot: Client, m: Message):
 #........................................................................................................................................................................................
                         
             
-                        # --- PDF CHECK (CLOUDSCRAPER BYPASS) ---
+                                    # --- PDF CHECK (CHROME HEADERS MIMIC) ---
             if ".pdf" in url.lower() or "/pdf/" in url.lower():
                 try:
                     pdf_path = f"{name1[:50]}.pdf"
                     
-                    # Cloudscraper banayein jo Cloudflare/WAF bypass karega
-                    scraper = cloudscraper.create_scraper()
+                    # Ye headers Chrome ki identity chura lenge
+                    chrome_headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Referer': 'https://utkarsh.com/', # Utkarsh ka referer zaroori ho sakta hai
+                    }
                     
-                    # Request maaro
-                    r = scraper.get(url, timeout=30)
-                    
-                    # Agar link expire ho gaya ho ya S3 access denied ho
-                    if r.status_code == 200 and len(r.content) > 2048: # Kam se kam 2KB
-                        with open(pdf_path, 'wb') as f:
-                            f.write(r.content)
-                        
-                        cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
-                        await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
-                        if os.path.exists(pdf_path):
-                            os.remove(pdf_path)
-                        count += 1
-                        continue
-                    else:
-                        # Agar server abhi bhi block kare toh ye batao
-                        raise Exception(f"Server sent error page ({len(r.content)} bytes). Try refreshing the TXT file or token.")
-                        
+                    # Session use karenge taaki cookies handle ho sakein
+                    async with aiohttp.ClientSession(headers=chrome_headers) as session:
+                        async with session.get(url, timeout=40) as resp:
+                            if resp.status == 200:
+                                content = await resp.read()
+                                if len(content) > 2048: # 2KB se bada content
+                                    async with aiofiles.open(pdf_path, mode='wb') as f:
+                                        await f.write(content)
+                                    
+                                    cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
+                                    await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
+                                    if os.path.exists(pdf_path):
+                                        os.remove(pdf_path)
+                                    count += 1
+                                    continue
+                                else:
+                                    raise Exception(f"Server sent small file ({len(content)} bytes). Bot is still being detected.")
+                            else:
+                                raise Exception(f"Server returned status code: {resp.status}")
+                                
                 except Exception as e:
-                    await bot.send_message(channel_id, f'⚠️ **PDF Corrupted/Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
+                    await bot.send_message(channel_id, f'⚠️ **PDF Chrome-Bypass Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
                     count += 1
                     continue
+
 
        
             # ------------------------------------
