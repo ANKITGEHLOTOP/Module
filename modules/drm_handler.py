@@ -283,10 +283,17 @@ async def drm_handler(bot: Client, m: Message):
                         
 #........................................................................................................................................................................................
             # --- PDF CHECK SABSE UPAR ---
-            if url.endswith(".pdf") or "/pdf/" in url:
-                ka = await aio(url, name) # Aapka aio function PDF download karega
-                await send_doc(bot, m, cc, ka, cc, prog, count, name, channel_id)
-                continue # Iske baad niche ka video logic skip ho jayega
+             # --- 1. PDF CHECK (SABSE PEHLE) ---
+            if url.lower().endswith(".pdf") or "/pdf/" in url.lower():
+                try:
+                    # 'cc1' caption setup
+                    cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
+                    ka = await helper.download(url, name) # Using helper's download for PDF
+                    await helper.send_doc(bot, m, None, ka, cc1, None, count, name, channel_id)
+                    count += 1
+                    continue
+                except Exception as e:
+                    print(f"PDF Error: {e}")
                 
             # ... [Previous setup code] ...
             if "visionias" in url:
