@@ -284,21 +284,25 @@ async def drm_handler(bot: Client, m: Message):
 #........................................................................................................................................................................................
                         
             
-            # --- PDF CHECK (ALIGNED PROPERLY) ---
+            # --- PDF CHECK (FINAL STABLE VERSION) ---
             if ".pdf" in url.lower() or "/pdf/" in url.lower():
                 try:
-                    cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
-                    # helper.download function use kar rahe hain
-                    ka = await helper.download(url, name)
-                    if ka and os.path.exists(ka):
-                        await bot.send_document(chat_id=channel_id, document=ka, caption=cc1)
-                        os.remove(ka)
+                    pdf_path = f"{name1}.pdf"
+                    # Direct download using requests (safe and fast for PDFs)
+                    r = requests.get(url, allow_redirects=True)
+                    with open(pdf_path, 'wb') as f:
+                        f.write(r.content)
+                    
+                    if os.path.exists(pdf_path):
+                        cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
+                        await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
+                        os.remove(pdf_path)
                         count += 1
                         continue
                     else:
-                        raise Exception("Download failed - File not found")
+                        raise Exception("File not saved on server")
                 except Exception as e:
-                    await bot.send_message(channel_id, f'⚠️ **PDF Failed** ⚠️\n**Name**: {name}\n**Error**: {str(e)}')
+                    await bot.send_message(channel_id, f'⚠️ **PDF Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
                     count += 1
                     continue
        
