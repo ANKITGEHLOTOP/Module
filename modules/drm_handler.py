@@ -285,44 +285,8 @@ async def drm_handler(bot: Client, m: Message):
                         
             
                                                                         # --- DIRECT PDF DOWNLOAD LOGIC (NO HELPER NEEDED) ---
-            if ".pdf" in url.lower() or "/pdf/" in url.lower():
-                try:
-                    pdf_path = f"{name1[:50]}.pdf"
-                    
-                    # Utkarsh Bypass Headers
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-                        'Referer': 'https://utkarsh.com/',
-                        'Origin': 'https://utkarsh.com',
-                        'Accept': 'application/pdf, */*'
-                    }
-
-                    # Direct Download using requests
-                    response = requests.get(url, headers=headers, stream=True, timeout=50)
-                    
-                    if response.status_code == 200:
-                        with open(pdf_path, 'wb') as f:
-                            for chunk in response.iter_content(chunk_size=1024*10):
-                                if chunk:
-                                    f.write(chunk)
-                        
-                        # Size check: 10KB se badi honi chahiye (Real PDF)
-                        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 10240:
-                            cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
-                            await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
-                            os.remove(pdf_path)
-                            count += 1
-                            continue
-                        else:
-                            if os.path.exists(pdf_path): os.remove(pdf_path)
-                            raise Exception("Link Expired ya Server ne 1KB ki file di hai.")
-                    else:
-                        raise Exception(f"Server Error: {response.status_code}")
-                        
-                except Exception as e:
-                    await bot.send_message(channel_id, f'⚠️ **PDF Error** ⚠️\n**Name**: {name1}\n**Reason**: {str(e)}')
-                    count += 1
-                    continue
+            if ".pdf*" in url:
+                url = f"https://dragoapi.vercel.app/pdf/{url}"
             # ----------------------------------------------------
 
 
