@@ -287,10 +287,6 @@ async def drm_handler(bot: Client, m: Message):
                 ka = await aio(url, name) # Aapka aio function PDF download karega
                 await send_doc(bot, m, cc, ka, cc, prog, count, name, channel_id)
                 continue # Iske baad niche ka video logic skip ho jayega
-            # ----------------------------
-
-            if "visionias" in url:
-                # ... baki video logic ...
                 
             # ... [Previous setup code] ...
             if "visionias" in url:
