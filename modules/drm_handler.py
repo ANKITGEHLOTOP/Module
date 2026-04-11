@@ -282,34 +282,47 @@ async def drm_handler(bot: Client, m: Message):
                         namef = f'{name1[:60]} {endfilename}'
                         
 #........................................................................................................................................................................................
-                        # --- PDF DOWNLOAD LOGIC (FINAL FIX) ---
-             if ".pdf" in url.lower():
+                                    url = "https://" + Vxy
+            
+            # --- PDF CHECK (ALIGNED PROPERLY) ---
+            if ".pdf" in url.lower() or "/pdf/" in url.lower():
                 try:
-                    # Caption setup
                     cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
-                    
-                    # 1. Pehle manually download karo helper use karke
-                    # dhyan rakhna name ke aage .pdf khud lag jayega ya nahi
-                    pdf_file = await helper.download(url, name)
-                    
-                    # 2. Check karo ki file sach mein download hui ya nahi
-             if pdf_file and os.path.isfile(pdf_file):
-                        # 3. Direct bot se bhejo (helper.send_doc ki zaroorat nahi agar wo error de raha hai)
-                        await bot.send_document(
-                            chat_id=channel_id,
-                            document=pdf_file,
-                            caption=cc1
-                        )
-                        os.remove(pdf_file) # Bhejne ke baad delete karo
+                    # helper.download function use kar rahe hain
+                    ka = await helper.download(url, name)
+                    if ka and os.path.exists(ka):
+                        await bot.send_document(chat_id=channel_id, document=ka, caption=cc1)
+                        os.remove(ka)
                         count += 1
-                        continue 
+                        continue
                     else:
-                        raise Exception("File download hi nahi hui ya path galat hai")
-                        
+                        raise Exception("Download failed - File not found")
                 except Exception as e:
-                    await bot.send_message(channel_id, f"⚠️ PDF Failed: {name}\nReason: {str(e)}")
+                    await bot.send_message(channel_id, f'⚠️ **PDF Failed** ⚠️\n**Name**: {name}\n**Error**: {str(e)}')
                     count += 1
                     continue
+            # ------------------------------------
+                        url = "https://" + Vxy
+            
+            # --- PDF CHECK (ALIGNED PROPERLY) ---
+            if ".pdf" in url.lower() or "/pdf/" in url.lower():
+                try:
+                    cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
+                    # helper.download function use kar rahe hain
+                    ka = await helper.download(url, name)
+                    if ka and os.path.exists(ka):
+                        await bot.send_document(chat_id=channel_id, document=ka, caption=cc1)
+                        os.remove(ka)
+                        count += 1
+                        continue
+                    else:
+                        raise Exception("Download failed - File not found")
+                except Exception as e:
+                    await bot.send_message(channel_id, f'⚠️ **PDF Failed** ⚠️\n**Name**: {name}\n**Error**: {str(e)}')
+                    count += 1
+                    continue
+            # ------------------------------------
+
 
                 
             # ... [Previous setup code] ...
