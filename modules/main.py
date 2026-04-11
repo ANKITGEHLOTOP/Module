@@ -17,7 +17,6 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, 
 import globals
 from html_handler import html_handler
 from drm_handler import drm_handler
-from drm_handler import aio
 from text_handler import text_to_txt
 from features import register_feature_handlers
 from upgrade import register_upgrade_handlers
