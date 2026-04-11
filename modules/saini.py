@@ -35,6 +35,38 @@ def duration(filename):
     except:
         return 0
 
+def split_video(file_path, max_size=1.9 * 1024 * 1024 * 1024):
+    """Splits video into parts if larger than 1.9GB for Telegram upload"""
+    if not os.path.exists(file_path) or os.path.getsize(file_path) <= max_size:
+        return [file_path]
+
+    print(f"📂 Large file detected ({os.path.getsize(file_path) / (1024**3):.2f} GB). Splitting...")
+    base_name, ext = os.path.splitext(file_path)
+    
+    # Get total duration
+    duration_cmd = f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{file_path}"'
+    res = subprocess.run(duration_cmd, shell=True, capture_output=True, text=True)
+    try:
+        total_duration = float(res.stdout)
+    except:
+        return [file_path]
+    
+    num_parts = int(os.path.getsize(file_path) // max_size) + 1
+    part_duration = total_duration / num_parts
+    parts = []
+
+    for i in range(num_parts):
+        start_time = i * part_duration
+        output_part = f"{base_name}_Part{i+1}{ext}"
+        # Using '-c copy' for instant splitting without quality loss
+        split_cmd = f'ffmpeg -i "{file_path}" -ss {start_time} -t {part_duration} -c copy "{output_part}" -y'
+        os.system(split_cmd)
+        if os.path.exists(output_part):
+            parts.append(output_part)
+
+    os.remove(file_path) # Delete original bulky file
+    return parts
+
 def get_mps_and_keys(api_url):
     response = requests.get(api_url)
     response_json = response.json()
@@ -109,8 +141,6 @@ async def decrypt_and_merge_video(mpd_url, keys_string, output_path, output_name
     try:
         output_path = Path(output_path)
         output_path.mkdir(parents=True, exist_ok=True)
-
-        # Optimization: Added concurrent fragments and tuned aria2c for MPD
         cmd1 = f'yt-dlp -f "bv[height<={quality}]+ba/b" -o "{output_path}/file.%(ext)s" --allow-unplayable-format --no-check-certificate --concurrent-fragments 10 --external-downloader aria2c --downloader-args "aria2c:-x 16 -j 16 -s 10 -k 1M" "{mpd_url}"'
         os.system(cmd1)
         
@@ -135,7 +165,6 @@ async def decrypt_and_merge_video(mpd_url, keys_string, output_path, output_name
         cmd4 = f'ffmpeg -i "{output_path}/video.mp4" -i "{output_path}/audio.m4a" -c copy "{output_path}/{output_name}.mp4"'
         os.system(cmd4)
         
-        # Cleanup
         for f in ["video.mp4", "audio.m4a"]:
             if (output_path / f).exists(): (output_path / f).unlink()
         
@@ -150,7 +179,7 @@ async def run(cmd):
     if proc.returncode == 1: return False
     return f'[stdout]\n{stdout.decode()}' if stdout else f'[stderr]\n{stderr.decode()}'
 
-def old_download(url, file_name, chunk_size = 1024 * 1024): # Increased to 1MB for speed
+def old_download(url, file_name, chunk_size = 1024 * 1024):
     if os.path.exists(file_name): os.remove(file_name)
     r = requests.get(url, allow_redirects=True, stream=True)
     with open(file_name, 'wb') as fd:
@@ -169,8 +198,6 @@ def time_name():
 
 async def download_video(url, cmd, name):
     global failed_counter
-    # FIX: Balanced connections to avoid throttling. -j 16 and -x 10 is the sweet spot.
-    # Added --concurrent-fragments 10 for M3U8/Cloudfront speed.
     download_cmd = f'{cmd} -R 25 --fragment-retries 25 --concurrent-fragments 10 --external-downloader aria2c --downloader-args "aria2c:-x 10 -j 16 -s 10 -k 1M"'
     
     print(f"Executing: {download_cmd}")
@@ -182,7 +209,6 @@ async def download_video(url, cmd, name):
         return await download_video(url, cmd, name)
     
     failed_counter = 0
-    # Search for the downloaded file
     base_name = name.split(".")[0]
     for ext in [".mp4", ".mkv", ".webm", ".mp4.webm"]:
         if os.path.isfile(f"{base_name}{ext}"): return f"{base_name}{ext}"
@@ -205,43 +231,57 @@ def decrypt_file(file_path, key):
     return True  
 
 async def send_vid(bot: Client, m: Message, cc, filename, vidwatermark, thumb, name, prog, channel_id):
-    # Generating thumbnail
-    subprocess.run(f'ffmpeg -i "{filename}" -ss 00:00:10 -vframes 1 "{filename}.jpg" -y', shell=True)
     if prog: await prog.delete()
     
-    reply1 = await bot.send_message(channel_id, f"**📩 Uploading Video 📩:-**\n<blockquote>**{name}**</blockquote>")
+    # Check for Splitting (2GB+ Limit)
+    video_parts = split_video(filename)
     
-    # Handling Thumbnail & Watermark
-    thumbnail = f"{filename}.jpg" if thumb == "/d" else thumb
-    w_filename = filename
-    
-    if vidwatermark != "/d":
-        w_filename = f"w_{filename}"
-        font_path = "vidwater.ttf"
-        # Optimized FFmpeg for faster watermarking
-        subprocess.run(f'ffmpeg -i "{filename}" -vf "drawtext=fontfile={font_path}:text=\'{vidwatermark}\':fontcolor=white@0.3:fontsize=h/6:x=(w-text_w)/2:y=(h-text_h)/2" -preset superfast -codec:a copy "{w_filename}" -y', shell=True)
+    for i, part in enumerate(video_parts):
+        # Generate thumbnail for each part
+        part_thumb = f"{part}.jpg"
+        subprocess.run(f'ffmpeg -i "{part}" -ss 00:00:10 -vframes 1 "{part_thumb}" -y', shell=True)
+        
+        # Determine thumbnail path
+        final_thumbnail = part_thumb if thumb == "/d" else thumb
+        
+        # Handle Watermark for each part
+        w_part = part
+        if vidwatermark != "/d":
+            w_part = f"w_{part}"
+            font_path = "vidwater.ttf"
+            subprocess.run(f'ffmpeg -i "{part}" -vf "drawtext=fontfile={font_path}:text=\'{vidwatermark}\':fontcolor=white@0.3:fontsize=h/6:x=(w-text_w)/2:y=(h-text_h)/2" -preset superfast -codec:a copy "{w_part}" -y', shell=True)
 
-    dur = int(duration(w_filename))
-    start_time = time.time()
+        status_text = f"**📩 Uploading Video 📩:-**\n<blockquote>**{name}**</blockquote>"
+        if len(video_parts) > 1:
+            status_text += f"\n📦 **Part:** `{i+1}/{len(video_parts)}`"
+            
+        reply1 = await bot.send_message(channel_id, status_text)
+        
+        dur = int(duration(w_part))
+        start_time = time.time()
 
-    try:
-        # Final Upload with TgCrypto (ensure tgcrypto is in requirements.txt)
-        await bot.send_video(
-            channel_id, 
-            w_filename, 
-            caption=cc, 
-            supports_streaming=True, 
-            height=720, 
-            width=1280, 
-            thumb=thumbnail, 
-            duration=dur, 
-            progress=progress_bar, 
-            progress_args=(reply1, start_time)
-        )
-    except Exception as e:
-        await bot.send_document(channel_id, w_filename, caption=cc, progress=progress_bar, progress_args=(reply1, start_time))
-    
-    # Cleanup
-    for f in [w_filename, filename, f"{filename}.jpg"]:
-        if os.path.exists(f): os.remove(f)
-    await reply1.delete()
+        try:
+            caption_text = f"{cc}\n\n📦 **Part:** `{i+1}`" if len(video_parts) > 1 else cc
+            await bot.send_video(
+                channel_id, 
+                w_part, 
+                caption=caption_text, 
+                supports_streaming=True, 
+                height=720, 
+                width=1280, 
+                thumb=final_thumbnail if os.path.exists(str(final_thumbnail)) else None, 
+                duration=dur, 
+                progress=progress_bar, 
+                progress_args=(reply1, start_time)
+            )
+        except Exception as e:
+            print(f"Upload error: {e}")
+            await bot.send_document(channel_id, w_part, caption=cc)
+        
+        # Clean up files for this part
+        for f in [w_part, part, part_thumb]:
+            if os.path.exists(f): 
+                try: os.remove(f)
+                except: pass
+        
+        await reply1.delete()
