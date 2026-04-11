@@ -284,25 +284,36 @@ async def drm_handler(bot: Client, m: Message):
 #........................................................................................................................................................................................
                         
             
-            # --- PDF CHECK (FINAL STABLE VERSION) ---
+            # --- PDF CHECK (HEADERS ADDED) ---
             if ".pdf" in url.lower() or "/pdf/" in url.lower():
                 try:
                     pdf_path = f"{name1}.pdf"
-                    # Direct download using requests (safe and fast for PDFs)
-                    r = requests.get(url, allow_redirects=True)
-                    with open(pdf_path, 'wb') as f:
-                        f.write(r.content)
                     
-                    if os.path.exists(pdf_path):
+                    # Utkarsh/Classplus ke liye headers zaroori hain
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 12; RMX2121) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
+                        'Accept': '*/*',
+                        'Connection': 'keep-alive',
+                    }
+                    
+                    # Direct download with headers
+                    r = requests.get(url, headers=headers, allow_redirects=True, timeout=30)
+                    
+                    # Check karo ki content asli PDF hai ya error text
+                    if r.status_code == 200 and len(r.content) > 1024: # 1KB se badi honi chahiye
+                        with open(pdf_path, 'wb') as f:
+                            f.write(r.content)
+                        
                         cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
                         await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
                         os.remove(pdf_path)
                         count += 1
                         continue
                     else:
-                        raise Exception("File not saved on server")
+                        raise Exception(f"Invalid File (Size: {len(r.content)} bytes). Server blocked the request.")
+                        
                 except Exception as e:
-                    await bot.send_message(channel_id, f'⚠️ **PDF Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
+                    await bot.send_message(channel_id, f'⚠️ **PDF Corrupted/Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
                     count += 1
                     continue
        
