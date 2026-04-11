@@ -282,7 +282,7 @@ async def drm_handler(bot: Client, m: Message):
                         namef = f'{name1[:60]} {endfilename}'
                         
 #........................................................................................................................................................................................
-                                    url = "https://" + Vxy
+                        
             
             # --- PDF CHECK (ALIGNED PROPERLY) ---
             if ".pdf" in url.lower() or "/pdf/" in url.lower():
@@ -301,26 +301,7 @@ async def drm_handler(bot: Client, m: Message):
                     await bot.send_message(channel_id, f'⚠️ **PDF Failed** ⚠️\n**Name**: {name}\n**Error**: {str(e)}')
                     count += 1
                     continue
-            # ------------------------------------
-                        url = "https://" + Vxy
-            
-            # --- PDF CHECK (ALIGNED PROPERLY) ---
-            if ".pdf" in url.lower() or "/pdf/" in url.lower():
-                try:
-                    cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
-                    # helper.download function use kar rahe hain
-                    ka = await helper.download(url, name)
-                    if ka and os.path.exists(ka):
-                        await bot.send_document(chat_id=channel_id, document=ka, caption=cc1)
-                        os.remove(ka)
-                        count += 1
-                        continue
-                    else:
-                        raise Exception("Download failed - File not found")
-                except Exception as e:
-                    await bot.send_message(channel_id, f'⚠️ **PDF Failed** ⚠️\n**Name**: {name}\n**Error**: {str(e)}')
-                    count += 1
-                    continue
+       
             # ------------------------------------
 
 
