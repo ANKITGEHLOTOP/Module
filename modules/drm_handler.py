@@ -282,27 +282,35 @@ async def drm_handler(bot: Client, m: Message):
                         namef = f'{name1[:60]} {endfilename}'
                         
 #........................................................................................................................................................................................
-            # ... (Links loop ke andar) ...
-            url = "https://" + Vxy
-            
-            # --- PDF DOWNLOAD LOGIC (FIXED) ---
-            if ".pdf" in url.lower() or "pdf" in url.lower():
+                        # --- PDF DOWNLOAD LOGIC (FINAL FIX) ---
+             if ".pdf" in url.lower():
                 try:
-                    # PDF ke liye caption setup
+                    # Caption setup
                     cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
                     
-                    # helper.download (saini.py) ko call kar rahe hain
-                    ka = await helper.download(url, name)
+                    # 1. Pehle manually download karo helper use karke
+                    # dhyan rakhna name ke aage .pdf khud lag jayega ya nahi
+                    pdf_file = await helper.download(url, name)
                     
-                    # PDF bhejne ke liye send_doc function
-                    await helper.send_doc(bot, m, None, ka, cc1, None, count, name, channel_id)
-                    
-                    count += 1
-                    continue # PDF bhej di, ab niche wala video logic skip ho jayega
+                    # 2. Check karo ki file sach mein download hui ya nahi
+             if pdf_file and os.path.isfile(pdf_file):
+                        # 3. Direct bot se bhejo (helper.send_doc ki zaroorat nahi agar wo error de raha hai)
+                        await bot.send_document(
+                            chat_id=channel_id,
+                            document=pdf_file,
+                            caption=cc1
+                        )
+                        os.remove(pdf_file) # Bhejne ke baad delete karo
+                        count += 1
+                        continue 
+                    else:
+                        raise Exception("File download hi nahi hui ya path galat hai")
+                        
                 except Exception as e:
                     await bot.send_message(channel_id, f"⚠️ PDF Failed: {name}\nReason: {str(e)}")
                     count += 1
                     continue
+
                 
             # ... [Previous setup code] ...
             if "visionias" in url:
