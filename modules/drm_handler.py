@@ -284,31 +284,30 @@ async def drm_handler(bot: Client, m: Message):
 #........................................................................................................................................................................................
                         
             
-                                                            # --- PDF CHECK (STRICT HEADERS BYPASS) ---
+                                                                        # --- DIRECT PDF DOWNLOAD LOGIC (NO HELPER NEEDED) ---
             if ".pdf" in url.lower() or "/pdf/" in url.lower():
                 try:
                     pdf_path = f"{name1[:50]}.pdf"
                     
-                    # Utkarsh ke S3 bucket ko lagna chahiye ki ye unki app se aa raha hai
+                    # Utkarsh Bypass Headers
                     headers = {
-                        'User-Agent': 'Mozilla/5.0 (Linux; Android 12; RMX2121) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
                         'Referer': 'https://utkarsh.com/',
                         'Origin': 'https://utkarsh.com',
-                        'Accept': 'application/pdf, */*',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Connection': 'keep-alive'
+                        'Accept': 'application/pdf, */*'
                     }
 
-                    # Direct download using requests with strict headers
-                    r = requests.get(url, headers=headers, stream=True, timeout=60)
+                    # Direct Download using requests
+                    response = requests.get(url, headers=headers, stream=True, timeout=50)
                     
-                    if r.status_code == 200:
+                    if response.status_code == 200:
                         with open(pdf_path, 'wb') as f:
-                            for chunk in r.iter_content(chunk_size=8192):
-                                f.write(chunk)
+                            for chunk in response.iter_content(chunk_size=1024*10):
+                                if chunk:
+                                    f.write(chunk)
                         
-                        # Check size: 5KB se badi honi chahiye asli PDF ke liye
-                        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 5120:
+                        # Size check: 10KB se badi honi chahiye (Real PDF)
+                        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 10240:
                             cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
                             await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
                             os.remove(pdf_path)
@@ -316,14 +315,16 @@ async def drm_handler(bot: Client, m: Message):
                             continue
                         else:
                             if os.path.exists(pdf_path): os.remove(pdf_path)
-                            raise Exception("Server sent error page or empty file (Size < 5KB)")
+                            raise Exception("Link Expired ya Server ne 1KB ki file di hai.")
                     else:
-                        raise Exception(f"Server returned status code: {r.status_code}")
+                        raise Exception(f"Server Error: {response.status_code}")
                         
                 except Exception as e:
-                    await bot.send_message(channel_id, f'⚠️ **PDF Final Bypass Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
+                    await bot.send_message(channel_id, f'⚠️ **PDF Error** ⚠️\n**Name**: {name1}\n**Reason**: {str(e)}')
                     count += 1
                     continue
+            # ----------------------------------------------------
+
 
 
 
