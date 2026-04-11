@@ -284,38 +284,37 @@ async def drm_handler(bot: Client, m: Message):
 #........................................................................................................................................................................................
                         
             
-            # --- PDF CHECK (HEADERS ADDED) ---
+                        # --- PDF CHECK (CLOUDSCRAPER BYPASS) ---
             if ".pdf" in url.lower() or "/pdf/" in url.lower():
                 try:
-                    pdf_path = f"{name1}.pdf"
+                    pdf_path = f"{name1[:50]}.pdf"
                     
-                    # Utkarsh/Classplus ke liye headers zaroori hain
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (Linux; Android 12; RMX2121) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36',
-                        'Accept': '*/*',
-                        'Connection': 'keep-alive',
-                    }
+                    # Cloudscraper banayein jo Cloudflare/WAF bypass karega
+                    scraper = cloudscraper.create_scraper()
                     
-                    # Direct download with headers
-                    r = requests.get(url, headers=headers, allow_redirects=True, timeout=30)
+                    # Request maaro
+                    r = scraper.get(url, timeout=30)
                     
-                    # Check karo ki content asli PDF hai ya error text
-                    if r.status_code == 200 and len(r.content) > 1024: # 1KB se badi honi chahiye
+                    # Agar link expire ho gaya ho ya S3 access denied ho
+                    if r.status_code == 200 and len(r.content) > 2048: # Kam se kam 2KB
                         with open(pdf_path, 'wb') as f:
                             f.write(r.content)
                         
                         cc1 = f'<b>{str(count).zfill(3)}.</b> {name1}.pdf\n\n**Extracted by➤**{CR}'
                         await bot.send_document(chat_id=channel_id, document=pdf_path, caption=cc1)
-                        os.remove(pdf_path)
+                        if os.path.exists(pdf_path):
+                            os.remove(pdf_path)
                         count += 1
                         continue
                     else:
-                        raise Exception(f"Invalid File (Size: {len(r.content)} bytes). Server blocked the request.")
+                        # Agar server abhi bhi block kare toh ye batao
+                        raise Exception(f"Server sent error page ({len(r.content)} bytes). Try refreshing the TXT file or token.")
                         
                 except Exception as e:
                     await bot.send_message(channel_id, f'⚠️ **PDF Corrupted/Failed** ⚠️\n**Name**: {name1}\n**Error**: {str(e)}')
                     count += 1
                     continue
+
        
             # ------------------------------------
 
